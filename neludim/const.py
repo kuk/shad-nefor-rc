@@ -27,6 +27,7 @@ AWS_KEY = getenv('AWS_KEY')
 DYNAMO_ENDPOINT = getenv('DYNAMO_ENDPOINT')
 
 ADMIN_USER_ID = int(getenv('ADMIN_USER_ID'))
+CHAT_ID = int(getenv('CHAT_ID'))
 
 #######
 #  CONTACT STATE

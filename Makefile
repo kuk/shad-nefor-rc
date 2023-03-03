@@ -29,6 +29,7 @@ deploy-bot:
 		--environment AWS_KEY=$(AWS_KEY) \
 		--environment DYNAMO_ENDPOINT=$(DYNAMO_ENDPOINT) \
 		--environment ADMIN_USER_ID=$(ADMIN_USER_ID) \
+		--environment CHAT_ID=$(CHAT_ID) \
 		--service-account-id $(SERVICE_ACCOUNT_ID) \
 		--folder-name shad-rc
 
@@ -46,6 +47,7 @@ deploy-trigger:
 		--environment AWS_KEY=$(AWS_KEY) \
 		--environment DYNAMO_ENDPOINT=$(DYNAMO_ENDPOINT) \
 		--environment ADMIN_USER_ID=$(ADMIN_USER_ID) \
+		--environment CHAT_ID=$(CHAT_ID) \
 		--service-account-id $(SERVICE_ACCOUNT_ID) \
 		--folder-name shad-rc
 

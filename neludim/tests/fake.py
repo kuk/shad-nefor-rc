@@ -4,7 +4,12 @@ from json import (
     dumps as format_json
 )
 
-from aiogram.types import Update
+from aiogram.types import (
+    Update,
+    ChatMember,
+    ChatMemberStatus
+)
+from aiogram.utils.exceptions import BadRequest
 
 from neludim.bot.bot import (
     Bot,
@@ -24,11 +29,20 @@ class FakeBot(Bot):
     def __init__(self):
         Bot.__init__(self, '123:faketoken')
         self.trace = []
+        self.chat_members = [1]
 
     async def request(self, method, data, files=None):
         json = format_json(data, ensure_ascii=False)
         self.trace.append([method, json])
         return {}
+
+    async def get_chat_member(self, chat_id, user_id):
+        if user_id not in self.chat_members:
+            raise BadRequest.detect('User not found')
+
+        return ChatMember(
+            status=ChatMemberStatus.MEMBER
+        )
 
 
 class FakeDB(DB):

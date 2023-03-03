@@ -10,8 +10,8 @@ from neludim.tests.fake import (
 )
 
 
-def message_json(text):
-    return '{"message": {"message_id": 2, "from": {"id": 1, "is_bot": false, "first_name": "Alexander", "last_name": "Kukushkin", "username": "alexkuk", "language_code": "ru"}, "chat": {"id": 1, "first_name": "Alexander", "last_name": "Kukushkin", "username": "alexkuk", "type": "private"}, "date": 1659800990, "text": "%s", "entities": []}}' % text
+def message_json(text, user_id=1):
+    return '{"message": {"message_id": 2, "from": {"id": %d, "is_bot": false, "first_name": "Alexander", "last_name": "Kukushkin", "username": "alexkuk", "language_code": "ru"}, "chat": {"id": 1, "first_name": "Alexander", "last_name": "Kukushkin", "username": "alexkuk", "type": "private"}, "date": 1659800990, "text": "%s", "entities": []}}' % (user_id, text)
 
 
 def query_json(data, username='alexkuk'):
@@ -269,6 +269,18 @@ async def test_other(context):
     await process_update(context, message_json('abc'))
     assert match_trace(context.bot.trace, [
         ['sendMessage', 'Как это работает']
+    ])
+
+
+#####
+#  CHAT MEMBER
+######
+
+
+async def test_chat_member(context):
+    await process_update(context, message_json('abc', user_id=123))
+    assert match_trace(context.bot.trace, [
+        ['sendMessage', 'Не нашел тебя в чате']
     ])
 
 
