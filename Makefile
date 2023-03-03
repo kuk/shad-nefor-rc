@@ -1,4 +1,4 @@
-IMAGE = natasha-neludim
+IMAGE = shad-rc
 REGISTRY = cr.yandex/$(REGISTRY_ID)
 REMOTE = $(REGISTRY)/$(IMAGE)
 
@@ -30,7 +30,7 @@ deploy-bot:
 		--environment DYNAMO_ENDPOINT=$(DYNAMO_ENDPOINT) \
 		--environment ADMIN_USER_ID=$(ADMIN_USER_ID) \
 		--service-account-id $(SERVICE_ACCOUNT_ID) \
-		--folder-name natasha-neludim
+		--folder-name shad-rc
 
 deploy-trigger:
 	yc serverless container revision deploy \
@@ -47,13 +47,13 @@ deploy-trigger:
 		--environment DYNAMO_ENDPOINT=$(DYNAMO_ENDPOINT) \
 		--environment ADMIN_USER_ID=$(ADMIN_USER_ID) \
 		--service-account-id $(SERVICE_ACCOUNT_ID) \
-		--folder-name natasha-neludim
+		--folder-name shad-rc
 
 log-follow:
 	yc log read default \
 		--filter 'json_payload.source = "user"' \
 		--follow \
-		--folder-name natasha-neludim
+		--folder-name shad-rc
 
 log-1000:
 	yc log read default \
@@ -61,4 +61,4 @@ log-1000:
 		--limit 1000 \
 		--since 2020-01-01T00:00:00Z \
 		--until 2030-01-01T00:00:00Z \
-		--folder-name natasha-neludim
+		--folder-name shad-rc

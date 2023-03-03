@@ -28,7 +28,7 @@ def query_json(data, username='alexkuk'):
 async def test_start(context):
     await process_update(context, message_json('/start'))
     assert match_trace(context.bot.trace, [
-        ['sendMessage', 'Бот Нелюдим']
+        ['sendMessage', 'организует random coffee для выпускников ШАДа']
     ])
 
     user = context.db.users[0]
@@ -261,14 +261,14 @@ async def test_review_profile_match(context):
 async def test_help(context):
     await process_update(context, message_json('/help'))
     assert match_trace(context.bot.trace, [
-        ['sendMessage', 'Бот Нелюдим']
+        ['sendMessage', 'Как это работает']
     ])
 
 
 async def test_other(context):
     await process_update(context, message_json('abc'))
     assert match_trace(context.bot.trace, [
-        ['sendMessage', 'Бот Нелюдим']
+        ['sendMessage', 'Как это работает']
     ])
 
 
