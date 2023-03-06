@@ -24,10 +24,8 @@ from neludim.text import (
 )
 
 from neludim.schedule import week_index
-from neludim.obj import (
-    Match,
-    Contact,
-)
+from neludim.obj import Contact
+
 from neludim.match import gen_matches
 from neludim.report import (
     gen_match_report,
@@ -103,11 +101,7 @@ async def create_contacts(context):
                 and week_index(_.agreed_participate) == current_week_index - 1
         )
     ]
-    skip_matches = [
-        Match(_.user_id, _.partner_user_id)
-        for _ in contacts
-    ]
-    matches = list(gen_matches(participate_users, skip_matches, manual_matches))
+    matches = list(gen_matches(participate_users, manual_matches, contacts))
 
     contacts = []
     for match in matches:
@@ -291,6 +285,10 @@ async def review_profiles(context):
     current_week_index = context.schedule.current_week_index()
 
     for user in users:
+        has_about = (
+            user.links is not None
+            or user.about is not None
+        )
         agreed_participate = (
                 user.agreed_participate
                 and week_index(user.agreed_participate) == current_week_index
@@ -302,7 +300,7 @@ async def review_profiles(context):
                 or user.updated_profile <= user.confirmed_profile
             )
         )
-        if agreed_participate and not confirmed_profile:
+        if has_about and agreed_participate and not confirmed_profile:
             await context.bot.send_message(
                 chat_id=ADMIN_USER_ID,
                 text=review_profile_text(user),
@@ -318,7 +316,7 @@ async def review_profiles(context):
 
 
 def manual_match_text(user, partner_user):
-    return f'manual_match {user_mention(user)} -> {user_mention(partner_user)}'
+    return f'manual match {user_mention(user)} -> {user_mention(partner_user)}'
 
 
 async def send_manual_matches(context):
@@ -329,16 +327,16 @@ async def send_manual_matches(context):
         for _ in await context.db.read_users()
     }
 
-    skip_matches = set()
+    skip_matches_index = set()
     for contact in contacts:
         if contact.partner_user_id:
-            skip_matches.add((contact.user_id, contact.partner_user_id))
-            skip_matches.add((contact.partner_user_id, contact.user_id))
+            skip_matches_index.add((contact.user_id, contact.partner_user_id))
+            skip_matches_index.add((contact.partner_user_id, contact.user_id))
 
     for match in manual_matches:
         if (
-                (match.user_id, match.partner_user_id) not in skip_matches
-                and (match.partner_user_id, match.user_id) not in skip_matches
+                (match.user_id, match.partner_user_id) not in skip_matches_index
+                and (match.partner_user_id, match.user_id) not in skip_matches_index
                 and ADMIN_USER_ID in (match.user_id, match.partner_user_id)
         ):
             user = id_users[match.user_id]

@@ -6,6 +6,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
+from aiogram.utils import exceptions
 
 from neludim.const import (
     ADMIN_USER_ID,
@@ -34,6 +35,10 @@ from neludim.const import (
 
     CONFIRM_ACTION,
     MATCH_ACTION,
+)
+from neludim.city import (
+    CITIES,
+    norm_city
 )
 from neludim.text import (
     EMPTY_SYMBOL,
@@ -267,6 +272,18 @@ async def handle_edit_about(context, query):
 #####
 
 
+def warn_city_text(city, cities=CITIES):
+    return f'''⚠ Не нашел город "{city}" базе участников. Бот сравнивает названия посимвольно.
+
+Города из базы участников: {", ".join(cities)}.
+
+Советы:
+- London -> Лондон, Moscow -> Москва
+- Долгопрудный/Москва -> Москва
+- Италия -> Рим, Краснодарский край -> Сочи
+- Тель Авив -> Тель-Авив'''
+
+
 async def handle_edit_input(context, message):
     user = await context.db.get_user(message.from_user.id)
     state = await context.db.get_chat_state(message.chat.id)
@@ -275,7 +292,7 @@ async def handle_edit_input(context, message):
     if data.field == NAME_FIELD:
         user.name = message.text
     elif data.field == CITY_FIELD:
-        user.city = message.text
+        user.city = norm_city(message.text)
     elif data.field == LINKS_FIELD:
         user.links = message.text
     elif data.field == ABOUT_FIELD:
@@ -290,6 +307,9 @@ async def handle_edit_input(context, message):
     )
     await context.db.reset_chat_state(message.chat.id)
 
+    if data.field == CITY_FIELD and user.city not in CITIES:
+        await message.answer(text=warn_city_text(user.city, CITIES))
+
 
 ########
 #
@@ -298,9 +318,17 @@ async def handle_edit_input(context, message):
 ###
 
 
+async def safe_delete(message):
+    try:
+        await message.delete()
+    except exceptions.MessageToDeleteNotFound:
+        # Pressed CANCEL_EDIT_DATA twice for example
+        pass
+
+
 async def handle_cancel_edit(context, query):
     await query.answer()
-    await query.message.delete()
+    await safe_delete(query.message)
     await context.db.reset_chat_state(query.message.chat.id)
 
 
@@ -331,6 +359,19 @@ def no_username_markup(week_index):
             callback_data=serialize_data(ParticipateData(week_index, agreed=1))
         )
     )
+
+
+NO_ABOUT_TEXT = '''⚠ Пожалуйста, заполни "О себе" или "Ссылки" в анкете.
+
+- Собеседник поймёт чем ты занимаешься, о чём интересно спросить.
+- Алгоритм сначала метчит участников с заполненными анкетами. С пустой анкетой выше вероятность остаться без собеседника.'''
+
+NO_ABOUT_MARKUP = InlineKeyboardMarkup().add(
+    InlineKeyboardButton(
+        text='✎ Заполнить анкету',
+        callback_data=serialize_data(EditProfileData())
+    )
+)
 
 
 async def handle_participate(context, query):
@@ -369,6 +410,12 @@ async def handle_participate(context, query):
         text=participate_text(context)
     )
 
+    if not user.links and not user.about:
+        await query.message.answer(
+            text=NO_ABOUT_TEXT,
+            reply_markup=NO_ABOUT_MARKUP
+        )
+
 
 ######
 #
@@ -382,9 +429,11 @@ FEEDBACK_TEXT = '''Была ли встреча полезна? Дай, пожа
 Примеры:
 "Хотела узнать как работают в Сбердевайсах. Собеседник провёл экскурсию по офису и показал работу изнутри в nlp_rnd_core."
 
-"Познакомился с ребятами из X5, Сбера. Обучались в МФТИ, ВШЭ. С одним из них стал участвовать в хаках, 2 раза заняли первое место."
+"Собеседник рассказал про работу в Sber AI, MTS AI и Tinkoff AI, теперь я знаю куда не стоит идти )) Узнал инсайдерскую инфу про кредитный скоринг, жалко не успел выведать про структурированный NER."
 
-"Собеседник рассказал про работу в Sber AI, MTS AI и Tinkoff AI, теперь я знаю куда не стоит идти )) Узнал инсайдерскую инфу про кредитный скоринг, жалко не успел выведать про структурированный NER."'''
+Пожалуйста, напиши детали:
+- "Узнал много полезных ссылок" -> "Решаю сореву про определение пола по логам, узнал ссылку на Кегл про похожее ..."
+- "дал ему совет, как можно развиваться, куда копать" -> "Скинул ссылку на А, посоветовал книжку Б, рассказал свой опыт про В"'''
 
 BAD_FEEDACK_TEXT = '''Напиши, пожалуйста, что не понравилось.
 
@@ -497,18 +546,29 @@ async def handle_feedback_input(context, message):
 ####
 
 
+def manual_match_text(user, partner_user):
+    return f'manual match {user_mention(user)} -> {user_mention(partner_user)}'
+
+
 async def handle_review_profile(context, query):
     data = deserialize_data(query.data, ReviewProfileData)
-    await query.answer(text=data.action)
+    await query.answer()
 
     if data.action == CONFIRM_ACTION:
         user = await context.db.get_user(data.user_id)
         user.confirmed_profile = context.schedule.now()
         await context.db.put_user(user)
+        await safe_delete(query.message)
 
     elif data.action == MATCH_ACTION:
         match = Match(ADMIN_USER_ID, data.user_id)
         await context.db.put_manual_match(match)
+
+        user = await context.db.get_user(ADMIN_USER_ID)
+        partner_user = await context.db.get_user(data.user_id)
+        await query.message.answer(
+            text=manual_match_text(user, partner_user)
+        )
 
 
 ######
