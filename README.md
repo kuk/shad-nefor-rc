@@ -279,3 +279,11 @@ make image push
 make deploy-bot
 make deploy-trigger
 ```
+
+Подтянуть upstream.
+
+```bash
+git remote add upstream git@github.com:kuk/natasha-neludim.git
+git fetch upstream
+git merge upstream/master
+```
