@@ -5,7 +5,7 @@ from datetime import (
 )
 
 
-START_DATE = Datetime.fromisoformat('2022-08-15')
+START_DATE = Datetime.fromisoformat('2022-09-26')
 START_DATE -= Timedelta(days=START_DATE.weekday())  # monday
 
 
