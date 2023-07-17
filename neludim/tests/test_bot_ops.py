@@ -1,11 +1,9 @@
 
 from neludim.tests.fake import match_trace
 
-from neludim.const import ADMIN_USER_ID
 from neludim.obj import (
     User,
     Contact,
-    Match
 )
 from neludim.schedule import week_index_monday
 
@@ -14,8 +12,7 @@ from neludim.bot.ops import (
     create_contacts,
     send_contacts,
     ask_feedback,
-    send_manual_matches,
-    review_profiles,
+    manual_match,
     send_reports
 )
 
@@ -82,44 +79,16 @@ async def test_ask_feedback(context):
     ])
 
 
-async def test_review_profiles(context):
+async def test_manual_match(context):
     agreed_participate = week_index_monday(context.schedule.current_week_index())
     context.db.users = [
-        User(
-            user_id=1, username='a', about=True,
-            agreed_participate=agreed_participate,
-            confirmed_profile=1,
-            updated_profile=2,
-        ),
-        User(
-            user_id=2, username='b', about=True,
-            agreed_participate=agreed_participate,
-            confirmed_profile=2,
-            updated_profile=1,
-        ),
+        User(user_id=1, username='a', created=0, agreed_participate=agreed_participate),
+        User(user_id=2, username='b', created=0, agreed_participate=agreed_participate),
     ]
-    await review_profiles(context)
+    await manual_match(context)
     assert match_trace(context.bot.trace, [
-        ['sendMessage', '@a']
-    ])
-
-
-async def test_send_manual_matches(context):
-    context.db.users = [
-        User(user_id=1, username='a'),
-        User(user_id=2, username='b'),
-        User(user_id=ADMIN_USER_ID, username='admin'),
-    ]
-    context.db.contacts = [
-        Contact(week_index=0, user_id=1, partner_user_id=ADMIN_USER_ID),
-    ]
-    context.db.manual_matches = [
-        Match(user_id=ADMIN_USER_ID, partner_user_id=1),
-        Match(user_id=2, partner_user_id=ADMIN_USER_ID)
-    ]
-    await send_manual_matches(context)
-    assert match_trace(context.bot.trace, [
-        ['sendMessage', '@b -> @admin']
+        ['sendMessage', '1 @a'],
+        ['sendMessage', 'user: ∅'],
     ])
 
 

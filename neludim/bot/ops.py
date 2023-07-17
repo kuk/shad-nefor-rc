@@ -14,10 +14,10 @@ from neludim.const import (
     OK_SCORE,
     BAD_SCORE,
 
-    CONFIRM_ACTION,
-    MATCH_ACTION,
+    SELECT_USER_ACTION,
 )
 from neludim.text import (
+    EMPTY_SYMBOL,
     day_month,
     user_mention,
     profile_text,
@@ -39,7 +39,7 @@ from .data import (
     serialize_data,
     ParticipateData,
     FeedbackData,
-    ReviewProfileData,
+    ManualMatchData,
 )
 
 
@@ -254,97 +254,86 @@ async def ask_feedback(context):
         )
 
 
-######
+#######
 #
-#   REVIEW PROFILES
+#   MANUAL MATCH
 #
 #####
 
 
-def review_profile_text(user):
-    return f'''profile {user_mention(user)}
+def cap_text(text, max_size=10):
+    lines = text.splitlines()
+    if len(lines) > max_size:
+        lines = lines[:max_size] + ['...']
+    return '\n'.join(lines)
 
-{profile_text(user)}'''
+
+def manual_match_profile_texts(users):
+    text = ''
+    for index, user in enumerate(users, 1):
+        sep = '\n\n' if text else ''
+        chunk = f'''{sep}{index} {user_mention(user)}
+{cap_text(profile_text(user))}'''
+
+        # https://core.telegram.org/bots/api#sendmessage "Text of the
+        # message to be sent, 1-4096 characters after entities
+        # parsing". Assume len(text) == "length after parsing"
+        if len(text) + len(chunk) > 4096:
+            yield text
+            text = ''
+        text += chunk
+
+    if text:
+        yield text
 
 
-def review_profile_markup(user):
-    return InlineKeyboardMarkup(row_width=2).add(
-        InlineKeyboardButton(
-            text='confirm',
-            callback_data=serialize_data(ReviewProfileData(CONFIRM_ACTION, user.user_id))
-        ),
-        InlineKeyboardButton(
-            text='match',
-            callback_data=serialize_data(ReviewProfileData(MATCH_ACTION, user.user_id))
+MANUAL_MATCH_TEXT = f'''user: {EMPTY_SYMBOL}
+partner user: {EMPTY_SYMBOL}'''
+
+
+def manual_match_markup(users):
+    # Max width = 8. Max buttons = 100, won't manually match more any
+    # way
+    markup = InlineKeyboardMarkup(row_width=5)
+    for index, user in enumerate(users[:100], 1):
+        button = InlineKeyboardButton(
+            text=str(index),
+            callback_data=serialize_data(ManualMatchData(
+                action=SELECT_USER_ACTION,
+                user_id=user.user_id
+            ))
         )
-    )
+        markup.insert(button)
+    return markup
 
 
-async def review_profiles(context):
+async def manual_match(context):
     users = await context.db.read_users()
     current_week_index = context.schedule.current_week_index()
 
-    for user in users:
-        has_about = (
-            user.links is not None
-            or user.about is not None
-        )
-        agreed_participate = (
-                user.agreed_participate
-                and week_index(user.agreed_participate) == current_week_index
-        )
-        confirmed_profile = (
-            user.confirmed_profile
-            and (
-                not user.updated_profile
-                or user.updated_profile <= user.confirmed_profile
-            )
-        )
-        if has_about and agreed_participate and not confirmed_profile:
-            await context.bot.send_message(
-                chat_id=ADMIN_USER_ID,
-                text=review_profile_text(user),
-                reply_markup=review_profile_markup(user)
-            )
-
-
-######
-#
-#   SEND MANUAL MATCHES
-#
-#####
-
-
-def manual_match_text(user, partner_user):
-    return f'manual match {user_mention(user)} -> {user_mention(partner_user)}'
-
-
-async def send_manual_matches(context):
-    contacts = await context.db.read_contacts()
-    manual_matches = await context.db.read_manual_matches()
-    id_users = {
-        _.user_id: _
-        for _ in await context.db.read_users()
-    }
-
-    skip_matches_index = set()
-    for contact in contacts:
-        if contact.partner_user_id:
-            skip_matches_index.add((contact.user_id, contact.partner_user_id))
-            skip_matches_index.add((contact.partner_user_id, contact.user_id))
-
-    for match in manual_matches:
+    users = [
+        _ for _ in users
         if (
-                (match.user_id, match.partner_user_id) not in skip_matches_index
-                and (match.partner_user_id, match.user_id) not in skip_matches_index
-                and ADMIN_USER_ID in (match.user_id, match.partner_user_id)
-        ):
-            user = id_users[match.user_id]
-            partner_user = id_users[match.partner_user_id]
-            await context.bot.send_message(
-                chat_id=ADMIN_USER_ID,
-                text=manual_match_text(user, partner_user)
-            )
+                _.user_id == ADMIN_USER_ID
+                or (
+                    _.agreed_participate
+                    and week_index(_.agreed_participate) == current_week_index
+                )
+        )
+    ]
+    users = sorted(users, key=lambda _: _.created)
+
+    for text in manual_match_profile_texts(users):
+        await context.bot.send_message(
+            chat_id=ADMIN_USER_ID,
+            text=text
+        )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_USER_ID,
+        text=MANUAL_MATCH_TEXT,
+        reply_markup=manual_match_markup(users)
+    )
 
 
 ######

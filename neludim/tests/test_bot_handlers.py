@@ -2,8 +2,8 @@
 from neludim.obj import (
     User,
     Contact,
+    Match
 )
-from neludim.const import ADMIN_USER_ID
 
 from neludim.tests.fake import (
     process_update,
@@ -234,36 +234,34 @@ async def test_cancel_feedback(context):
     ])
 
 
-#########
-#   REVIEW PROFILE
-####
+######
+#
+#   MANUAL MATCH
+#
+#####
 
 
-async def test_review_profile_confirm(context):
-    context.db.users = [User(user_id=1)]
-    await process_update(context, query_json('review_profile:confirm:1'))
+async def test_manual_match(context):
+    context.db.users = [User(user_id=1), User(user_id=2)]
+    await process_update(context, query_json('manual_match:select_user:1'))
+    await process_update(context, query_json('manual_match:select_partner_user:1:2'))
+    await process_update(context, query_json('manual_match:confirm:1:2'))
     assert match_trace(context.bot.trace, [
         ['answerCallbackQuery', '{"callback_query_id": "1"}'],
-        ['deleteMessage', '{"chat_id": 1, "message_id": 1}']
-    ])
-    assert context.db.users[0].confirmed_profile
-
-
-async def test_review_profile_match(context):
-    context.db.users = [
-        User(user_id=ADMIN_USER_ID),
-        User(user_id=1)
-    ]
-    await process_update(context, query_json('review_profile:match:1'))
-    assert match_trace(context.bot.trace, [
+        ['editMessageText', '{"text": "user: 1'],
         ['answerCallbackQuery', '{"callback_query_id": "1"}'],
-        ['sendMessage', '->'],
+        ['editMessageText', 'partner user: 2'],
+        ['answerCallbackQuery', '{"callback_query_id": "1"}'],
+        ['sendMessage', '1 -> 2'],
+        ['editMessageText', 'user: ∅'],
     ])
-    assert context.db.manual_matches
+    assert context.db.manual_matches == [Match(user_id=1, partner_user_id=2)]
 
 
 #######
+#
 #   HELP/OTHER
+#
 #######
 
 
@@ -290,16 +288,4 @@ async def test_chat_member(context):
     await process_update(context, message_json('abc', user_id=123))
     assert match_trace(context.bot.trace, [
         ['sendMessage', 'Не нашел тебя в чате']
-    ])
-
-
-#####
-#  V1
-#######
-
-
-async def test_v1_commands(context):
-    await process_update(context, message_json('/show_contact'))
-    assert match_trace(context.bot.trace, [
-        ['sendMessage', 'обновил интерфейс бота']
     ])

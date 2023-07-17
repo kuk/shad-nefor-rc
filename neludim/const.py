@@ -91,26 +91,6 @@ MANUAL_MATCHES_KEY = 'key'
 START_COMMAND = 'start'
 HELP_COMMAND = 'help'
 
-V1_COMMANDS = [
-    'edit_profile',
-    'edit_name',
-    'edit_city',
-    'edit_links',
-    'edit_about',
-
-    'cancel',
-    'empty',
-
-    'participate',
-    'pause_week',
-    'pause_month',
-
-    'show_contact',
-    'confirm_contact',
-    'fail_contact',
-    'contact_feedback',
-]
-
 ######
 #  DATA
 ######
@@ -118,7 +98,7 @@ V1_COMMANDS = [
 EDIT_PROFILE_PREFIX = 'edit_profile'
 PARTICIPATE_PREFIX = 'participate'
 FEEDBACK_PREFIX = 'feedback'
-REVIEW_PROFILE_PREFIX = 'review_profile'
+MANUAL_MATCH_PREFIX = 'manual_match'
 
 CANCEL_EDIT_DATA = 'cancel_edit'
 CANCEL_FEEDBACK_DATA = 'cancel_feedback'
@@ -139,12 +119,14 @@ ABOUT_FIELD = 'about'
 CONFIRM_STATE = 'confirm'
 FAIL_STATE = 'fail'
 
-####
+######
 #  ACTION
-#####
+####
 
+SELECT_USER_ACTION = 'select_user'
+SELECT_PARTNER_USER_ACTION = 'select_partner_user'
 CONFIRM_ACTION = 'confirm'
-MATCH_ACTION = 'match'
+CANCEL_ACTION = 'cancel'
 
 #####
 #  SCORE
